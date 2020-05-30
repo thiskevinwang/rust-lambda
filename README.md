@@ -69,7 +69,7 @@ https://aws.amazon.com/blogs/opensource/rust-runtime-for-aws-lambda/
 
 https://robertohuertas.com/2018/12/02/aws-lambda-rust/
 
-- for providing a code snippet that actually works across every stage (Lambda console, API Gateway console, and hitting the deployed endpoint)
+- for providing a code snippet that actually works (with slight modification) across every stage (Lambda console, API Gateway console, and hitting the deployed endpoint)
 
 For `lambda_runtime ^0.2`, `lambda_runtime::Context` no longer has `.new_error()`. Fix:
 
