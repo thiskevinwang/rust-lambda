@@ -51,7 +51,7 @@ fn my_handler(e: Root, c: lambda::Context) -> Result<Response, HandlerError> {
         status_code: 200,
         headers: headers,
     };
-    println("RES RES RES");
+    println!("RES RES RES");
     println!("{:?}", response);
     Ok(response)
 }
