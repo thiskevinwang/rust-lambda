@@ -30,6 +30,12 @@ linker = "x86_64-linux-musl-gcc"' > .cargo/config
 
 - ⚠️ **TODO:** Still unsure if you run this in the directory or the cargo-generated directories.
 
+Manually create symlink to the new linker
+
+```sh
+ln -s /usr/local/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+```
+
 ## What's inside
 
 ```
