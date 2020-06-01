@@ -10,10 +10,23 @@ autobins = false
 lambda_runtime = "^0.2"
 # https://github.com/awslabs/aws-lambda-rust-runtime/issues/216
 lambda = { git = "https://github.com/awslabs/aws-lambda-rust-runtime/", branch = "master" }
+# openssl = { version = "0.10", features = ["vendored"] }
+# rusoto_core = "0.43.0"
+# rusoto_dynamodb = "0.43.0"
 serde = "^1"
 serde_derive = "^1"
 serde_json = "^1"
 tokio = { version = "0.2", features = ["macros", "tcp", "dns", "io-util"] }
+
+[dependencies.rusoto_core]
+version = "0.43.0"
+default-features = false
+features = ["rustls"]
+
+[dependencies.rusoto_dynamodb]
+version = "0.43.0"
+default-features = false
+features = ["rustls"]
 
 [[bin]]
 name = "bootstrap"
