@@ -80,3 +80,17 @@ Some("error") => Err(c.new_error("Empty first name (body)")),
 // ✅ works
 Some("error") => Err("Empty first name (body)".into()),
 ```
+
+### &\$%^#! errors...
+
+> failed to run custom build command for `ring v0.16.14`
+
+Explained by: [This issue comment](https://github.com/briansmith/ring/issues/563#issuecomment-318790822)
+
+Fixed by running:
+
+- documented [here](https://aws.amazon.com/blogs/opensource/rust-runtime-for-aws-lambda/)
+
+```sh
+ln -s /usr/local/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+```
