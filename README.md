@@ -83,6 +83,8 @@ Some("error") => Err("Empty first name (body)".into()),
 
 ### &\$%^#! errors...
 
+#### Failing to build with `rusoto` deps, part 1:
+
 > failed to run custom build command for `ring v0.16.14`
 
 Explained by: [This issue comment](https://github.com/briansmith/ring/issues/563#issuecomment-318790822)
@@ -93,4 +95,42 @@ Fixed by running:
 
 ```sh
 ln -s /usr/local/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+```
+
+#### Failing to build with `rusoto` deps, part 2:
+
+> Could not find directory of OpenSSL installation, and this `-sys` crate cannot
+> proceed without this knowledge. If OpenSSL is installed and this crate had
+> trouble finding it, you can set the `OPENSSL_DIR` environment variable for the
+> compilation process.
+>
+> Make sure you also have the development packages of openssl installed.
+> For example, `libssl-dev` on Ubuntu or `openssl-devel` on Fedora.
+>
+> If you're in a situation where you think the directory _should_ be found
+> automatically, please open a bug at https://github.com/sfackler/rust-openssl
+> and include information about your system as well as this message.
+>
+> \$HOST = x86_64-apple-darwin
+>
+> \$TARGET = x86_64-unknown-linux-musl
+>
+> openssl-sys = 0.9.57
+
+Fixed in `Cargo.toml`
+
+```diff
+[dependencies]
+- rusoto_core = "0.43.0"
+- rusoto_dynamodb = "0.43.0"
+
++ [dependencies.rusoto_core]
++ version = "0.43.0"
++ default-features = false
++ features = ["rustls"]
+
++ [dependencies.rusoto_dynamodb]
++ version = "0.43.0"
++ default-features = false
++ features = ["rustls"]
 ```
