@@ -48,20 +48,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async_await_fn"
-version = "0.1.0"
-dependencies = [
- "lambda",
- "lambda_runtime",
- "rusoto_core",
- "rusoto_dynamodb",
- "serde",
- "serde_derive",
- "serde_json",
- "tokio 0.2.21",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1354,6 +1340,20 @@ dependencies = [
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "rust_dynamo_list_tables"
+version = "0.1.0"
+dependencies = [
+ "lambda",
+ "lambda_runtime",
+ "rusoto_core",
+ "rusoto_dynamodb",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tokio 0.2.21",
 ]
 
 [[package]]

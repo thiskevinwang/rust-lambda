@@ -1,5 +1,5 @@
 [package]
-name = "async_await_fn"
+name = "rust_dynamo_list_tables"
 version = "0.1.0"
 authors = ["Kevin Wang <kwangsan@gmail.com>"]
 edition = "2018"
