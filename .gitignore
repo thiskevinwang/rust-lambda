@@ -2,3 +2,4 @@ misc/
 __misc__/
 *.zip
 */target/
+.env
