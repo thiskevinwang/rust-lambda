@@ -1,0 +1,2 @@
+CURRENT_FOLDER=${PWD##*/}
+echo ${RESULT}
