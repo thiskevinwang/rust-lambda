@@ -72,6 +72,9 @@ const TABLE_NAME: &'static str = "claps";
 async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     let client = DynamoDbClient::new(Region::UsEast1);
 
+    // Slug to be shared between
+    // - POST#<slug> #CLAPS#<ip>
+    // - POST#<slug> #TOTAL
     let mut slug: String = "".to_string();
     if let Some(bd) = e.body {
         if let Some(bd_slug) = bd.slug {
@@ -107,6 +110,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
         },
     );
 
+    // Key of a User's claps
     let mut key = HashMap::new();
     key.insert(
         "PK".to_string(),
@@ -126,7 +130,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     // Input to update a specific users's votes
     let update_item_input: UpdateItemInput = UpdateItemInput {
         table_name: String::from(TABLE_NAME),
-        key: key,
+        key: key.clone(),
         // 'SET #val = if_not_exists(#val, :zero) + :inc'
         update_expression: Some("SET claps = if_not_exists(claps, :zero) + :inc".to_string()),
         expression_attribute_values: Some(expression_attribute_values),
@@ -136,15 +140,91 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
         ..Default::default()
     };
 
+    let mut totals_key = HashMap::new();
+    totals_key.insert(
+        "PK".to_string(),
+        AttributeValue {
+            s: Some(format!("POST#{}", slug)),
+            ..Default::default()
+        },
+    );
+    totals_key.insert(
+        "SK".to_string(),
+        AttributeValue {
+            s: Some(format!("#TOTAL")),
+            ..Default::default()
+        },
+    );
+
+    let mut totals_expression_attribute_values = HashMap::new();
+    totals_expression_attribute_values.insert(
+        ":inc".to_string(),
+        AttributeValue {
+            n: Some(format!("1")),
+            ..Default::default()
+        },
+    );
+    totals_expression_attribute_values.insert(
+        ":zero".to_string(),
+        AttributeValue {
+            n: Some(format!("0")),
+            ..Default::default()
+        },
+    );
+
+    let update_total_input: UpdateItemInput = UpdateItemInput {
+        table_name: String::from(TABLE_NAME),
+        key: totals_key.clone(),
+        update_expression: Some("SET claps = if_not_exists(claps, :zero) + :inc".to_string()),
+        expression_attribute_values: Some(totals_expression_attribute_values),
+        // condition_expression: Some("attribute_not_exists(claps) OR (claps < :limit)".to_string()),
+        return_values: Some("UPDATED_NEW".to_string()),
+        ..Default::default()
+    };
+
     let mut body: ::serde_json::Value = json!({});
+
+    // Update POST#<slug> #CLAPS#<ip>
     match client.update_item(update_item_input).await {
         Ok(output) => {
+            println!(
+                "Successfully incremented: {:?} {:?}",
+                key.get("PK"),
+                key.get("SK")
+            );
             body = json!(output);
+        }
+        Err(error) => {
+            // println!("Error: {:?}", error);
+            panic!("Error: {:?}", error);
+            // TODO: Create proper response shape
+        }
+    };
+
+    // ------------------------------
+    // Currently there are 2 updates
+    // The 2nd (updates a slug's total claps)
+    // waits for the first (updates a users claps for a slug)
+    //
+    // the first will "cap" at 10, and panic
+    //
+    // TODO: figure out the best way to handle this
+    // ------------------------------
+
+    // Update POST#<slug> #TOTAL
+    match client.update_item(update_total_input).await {
+        Ok(output) => {
+            println!(
+                "Successfully incremented: {:?} {:?}",
+                totals_key.get("PK"),
+                totals_key.get("SK")
+            );
         }
         Err(error) => {
             println!("Error: {:?}", error);
         }
-    }
+    };
+
     let response = CustomOutput::new(body.to_string());
     Ok(response)
 }
