@@ -55,6 +55,7 @@ struct CustomOutput {
     #[serde(rename = "statusCode")]
     status_code: u16,
     body: ::serde_json::Value,
+    headers: ::serde_json::Value,
 }
 
 // init helper
@@ -64,21 +65,44 @@ impl CustomOutput {
             is_base64_encoded: ::serde_json::Value::Bool(false),
             status_code: 200,
             body: ::serde_json::Value::String(body),
+            headers: json!({
+                "Access-Control-Allow-Credentials": true,
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json",
+            }),
+        }
+    }
+    fn error(body: String) -> Self {
+        CustomOutput {
+            is_base64_encoded: ::serde_json::Value::Bool(false),
+            status_code: 500,
+            body: ::serde_json::Value::String(body),
+            headers: json!({
+                "Access-Control-Allow-Credentials": true,
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json",
+            }),
         }
     }
 }
 
 const TABLE_NAME: &'static str = "claps";
 async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
+    // return Ok(CustomOutput::new(json!(e).to_string()));
     let client = DynamoDbClient::new(Region::UsEast1);
 
     // Slug to be shared between
     // - POST#<slug> #CLAPS#<ip>
     // - POST#<slug> #TOTAL
     let mut slug: String = "".to_string();
-    if let Some(bd) = e.body {
-        if let Some(bd_slug) = bd.slug {
-            slug = bd_slug;
+    // I Can't fucking figure out why POST requests that have a payload
+    // cause "SOMETHING" to panic.
+    //
+    // For now, i'll use QS params.
+    // - TODO: Improve error logging
+    if let Some(qsp) = e.query_string_parameters {
+        if let Some(qs_slug) = qsp.slug {
+            slug = qs_slug;
         }
     }
 
@@ -187,17 +211,18 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     // Update POST#<slug> #CLAPS#<ip>
     match client.update_item(update_item_input).await {
         Ok(output) => {
-            println!(
-                "Successfully incremented: {:?} {:?}",
-                key.get("PK"),
-                key.get("SK")
-            );
+            println!("Successfully incremented ITEM, {:?}", output);
             body = json!(output);
         }
         Err(error) => {
-            // println!("Error: {:?}", error);
-            panic!("Error: {:?}", error);
+            println!("Error: {:?}", error);
+            // panic!("Error: {:?}", error);
             // TODO: Create proper response shape
+            let error_response: ::serde_json::Value = json!({
+                "Error": error.to_string(),
+            });
+            let response = CustomOutput::error(error_response.to_string());
+            return Ok(response);
         }
     };
 
@@ -214,14 +239,10 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     // Update POST#<slug> #TOTAL
     match client.update_item(update_total_input).await {
         Ok(output) => {
-            println!(
-                "Successfully incremented: {:?} {:?}",
-                totals_key.get("PK"),
-                totals_key.get("SK")
-            );
+            println!("Successfully incremented TOTOAL {:?}", output);
         }
         Err(error) => {
-            println!("Error: {:?}", error);
+            println!("Failed to increment TOTAL: {:?}", error);
         }
     };
 

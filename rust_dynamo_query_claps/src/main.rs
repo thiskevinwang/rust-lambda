@@ -1,6 +1,6 @@
 use lambda::handler_fn;
 use rusoto_core::Region;
-use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, GetItemInput};
+use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, QueryInput};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -86,30 +86,33 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
         }
     }
 
-    let mut key = HashMap::new();
-    key.insert(
-        "PK".to_string(),
+    let mut expression_attribute_values = HashMap::new();
+    expression_attribute_values.insert(
+        ":pk".to_string(),
         AttributeValue {
             s: Some(format!("POST#{}", slug)),
             ..Default::default()
         },
     );
-    key.insert(
-        "SK".to_string(),
+    expression_attribute_values.insert(
+        ":sk".to_string(),
         AttributeValue {
             s: Some(format!("#TOTAL")),
             ..Default::default()
         },
     );
 
-    let get_item_input: GetItemInput = GetItemInput {
+    let query_input: QueryInput = QueryInput {
         table_name: String::from(TABLE_NAME),
-        key,
+        key_condition_expression: Some("PK = :pk AND begins_with(SK, :sk)".to_string()),
+        exclusive_start_key: None,
+        expression_attribute_values: Some(expression_attribute_values),
+        limit: Some(10),
         ..Default::default()
     };
 
     let mut body: ::serde_json::Value = json!({});
-    match client.get_item(get_item_input).await {
+    match client.query(query_input).await {
         Ok(output) => {
             body = json!(output);
         }
