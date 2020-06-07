@@ -17,7 +17,6 @@ async fn main() -> Result<(), Error> {
 #[derive(Default, Debug, Clone, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RequestContext {
-    pub domain_name: String,
     pub identity: Identity,
 }
 
@@ -27,23 +26,15 @@ pub struct Identity {
     pub source_ip: String,
 }
 
-#[derive(Deserialize, Clone)]
-struct QueryString {
-    #[serde(rename = "slug")]
-    slug: Option<String>,
-}
-
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Body {
-    #[serde(rename = "slug")]
-    slug: Option<String>,
+    slug: String,
+    claps: u32,
 }
 
 #[derive(Deserialize, Clone)]
 struct CustomEvent {
-    #[serde(rename = "queryStringParameters")]
-    query_string_parameters: Option<QueryString>,
-    body: Option<Body>,
+    body: Option<String>,
     #[serde(rename = "requestContext")]
     request_context: Option<RequestContext>,
 }
@@ -67,7 +58,7 @@ impl CustomOutput {
             body: ::serde_json::Value::String(body),
             headers: json!({
                 "Access-Control-Allow-Credentials": true,
-                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Origin": "https://coffeecodeclimb.com",
                 "Content-Type": "application/json",
             }),
         }
@@ -79,7 +70,7 @@ impl CustomOutput {
             body: ::serde_json::Value::String(body),
             headers: json!({
                 "Access-Control-Allow-Credentials": true,
-                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Origin": "https://coffeecodeclimb.com",
                 "Content-Type": "application/json",
             }),
         }
@@ -88,34 +79,32 @@ impl CustomOutput {
 
 const TABLE_NAME: &'static str = "claps";
 async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
-    // return Ok(CustomOutput::new(json!(e).to_string()));
+    let body: Body = if let Some(json_string) = e.body {
+        let byte_vector = json_string.into_bytes();
+        serde_json::from_slice(&byte_vector).unwrap()
+    } else {
+        Body {
+            claps: 0,
+            slug: "init".to_string(),
+        }
+    };
+
     let client = DynamoDbClient::new(Region::UsEast1);
 
     // Slug to be shared between
     // - POST#<slug> #CLAPS#<ip>
     // - POST#<slug> #TOTAL
-    let mut slug: String = "".to_string();
-    // I Can't fucking figure out why POST requests that have a payload
-    // cause "SOMETHING" to panic.
-    //
-    // For now, i'll use QS params.
-    // - TODO: Improve error logging
-    if let Some(qsp) = e.query_string_parameters {
-        if let Some(qs_slug) = qsp.slug {
-            slug = qs_slug;
-        }
-    }
-
-    let mut ip: String = "0.0.0.0".to_string();
-    if let Some(rc) = e.request_context {
-        ip = rc.identity.source_ip
-    }
+    let ip: String = if let Some(rc) = e.request_context {
+        rc.identity.source_ip
+    } else {
+        "0.0.0.0".to_string()
+    };
 
     let mut expression_attribute_values = HashMap::new();
     expression_attribute_values.insert(
         ":inc".to_string(),
         AttributeValue {
-            n: Some(format!("1")),
+            n: Some(format!("{}", body.claps)),
             ..Default::default()
         },
     );
@@ -129,7 +118,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     expression_attribute_values.insert(
         ":limit".to_string(),
         AttributeValue {
-            n: Some(format!("10")),
+            n: Some(format!("60")),
             ..Default::default()
         },
     );
@@ -139,7 +128,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     key.insert(
         "PK".to_string(),
         AttributeValue {
-            s: Some(format!("POST#{}", slug)),
+            s: Some(format!("POST#{}", body.slug)),
             ..Default::default()
         },
     );
@@ -168,7 +157,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     totals_key.insert(
         "PK".to_string(),
         AttributeValue {
-            s: Some(format!("POST#{}", slug)),
+            s: Some(format!("POST#{}", body.slug)),
             ..Default::default()
         },
     );
@@ -184,7 +173,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     totals_expression_attribute_values.insert(
         ":inc".to_string(),
         AttributeValue {
-            n: Some(format!("1")),
+            n: Some(format!("{}", body.claps)),
             ..Default::default()
         },
     );
