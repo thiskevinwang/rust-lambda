@@ -83,7 +83,7 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     let mut ip: String = "0.0.0.0".to_string();
     if let Some(rc) = e.request_context {
         ip = rc.identity.source_ip
-    }s
+    }
 
     let body: ::serde_json::Value = json!({
         "slug": e_body.slug,
