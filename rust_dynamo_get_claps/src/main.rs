@@ -52,7 +52,7 @@ struct CustomEvent {
 #[derive(Serialize, Clone)]
 struct CustomOutput {
     #[serde(rename = "isBase64Encoded")]
-    is_base64_encoded: ::serde_json::Value,
+    is_base64_encoded: bool,
     #[serde(rename = "statusCode")]
     status_code: u16,
     body: ::serde_json::Value,
@@ -63,7 +63,7 @@ struct CustomOutput {
 impl CustomOutput {
     fn new(body: String) -> Self {
         CustomOutput {
-            is_base64_encoded: ::serde_json::Value::Bool(false),
+            is_base64_encoded: false,
             status_code: 200,
             body: ::serde_json::Value::String(body),
             headers: json!({
