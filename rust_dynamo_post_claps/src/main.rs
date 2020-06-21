@@ -153,49 +153,49 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
         ..Default::default()
     };
 
-    let mut totals_key = HashMap::new();
-    totals_key.insert(
-        "PK".to_string(),
-        AttributeValue {
-            s: Some(format!("POST#{}", body.slug)),
-            ..Default::default()
-        },
-    );
-    totals_key.insert(
-        "SK".to_string(),
-        AttributeValue {
-            s: Some(format!("#TOTAL")),
-            ..Default::default()
-        },
-    );
+    // let mut totals_key = HashMap::new();
+    // totals_key.insert(
+    //     "PK".to_string(),
+    //     AttributeValue {
+    //         s: Some(format!("POST#{}", body.slug)),
+    //         ..Default::default()
+    //     },
+    // );
+    // totals_key.insert(
+    //     "SK".to_string(),
+    //     AttributeValue {
+    //         s: Some(format!("#TOTAL")),
+    //         ..Default::default()
+    //     },
+    // );
 
-    let mut totals_expression_attribute_values = HashMap::new();
-    totals_expression_attribute_values.insert(
-        ":inc".to_string(),
-        AttributeValue {
-            n: Some(format!("{}", body.claps)),
-            ..Default::default()
-        },
-    );
-    totals_expression_attribute_values.insert(
-        ":zero".to_string(),
-        AttributeValue {
-            n: Some(format!("0")),
-            ..Default::default()
-        },
-    );
+    // let mut totals_expression_attribute_values = HashMap::new();
+    // totals_expression_attribute_values.insert(
+    //     ":inc".to_string(),
+    //     AttributeValue {
+    //         n: Some(format!("{}", body.claps)),
+    //         ..Default::default()
+    //     },
+    // );
+    // totals_expression_attribute_values.insert(
+    //     ":zero".to_string(),
+    //     AttributeValue {
+    //         n: Some(format!("0")),
+    //         ..Default::default()
+    //     },
+    // );
 
-    let update_total_input: UpdateItemInput = UpdateItemInput {
-        table_name: String::from(TABLE_NAME),
-        key: totals_key.clone(),
-        update_expression: Some("SET claps = if_not_exists(claps, :zero) + :inc".to_string()),
-        expression_attribute_values: Some(totals_expression_attribute_values),
-        // condition_expression: Some("attribute_not_exists(claps) OR (claps < :limit)".to_string()),
-        return_values: Some("UPDATED_NEW".to_string()),
-        ..Default::default()
-    };
+    // let update_total_input: UpdateItemInput = UpdateItemInput {
+    //     table_name: String::from(TABLE_NAME),
+    //     key: totals_key.clone(),
+    //     update_expression: Some("SET claps = if_not_exists(claps, :zero) + :inc".to_string()),
+    //     expression_attribute_values: Some(totals_expression_attribute_values),
+    //     // condition_expression: Some("attribute_not_exists(claps) OR (claps < :limit)".to_string()),
+    //     return_values: Some("UPDATED_NEW".to_string()),
+    //     ..Default::default()
+    // };
 
-    let mut body: ::serde_json::Value = json!({});
+    let body: ::serde_json::Value;
 
     // Update POST#<slug> #CLAPS#<ip>
     match client.update_item(update_item_input).await {
@@ -226,14 +226,14 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     // ------------------------------
 
     // Update POST#<slug> #TOTAL
-    match client.update_item(update_total_input).await {
-        Ok(output) => {
-            println!("Successfully incremented TOTOAL {:?}", output);
-        }
-        Err(error) => {
-            println!("Failed to increment TOTAL: {:?}", error);
-        }
-    };
+    // match client.update_item(update_total_input).await {
+    //     Ok(output) => {
+    //         println!("Successfully incremented TOTOAL {:?}", output);
+    //     }
+    //     Err(error) => {
+    //         println!("Failed to increment TOTAL: {:?}", error);
+    //     }
+    // };
 
     let response = CustomOutput::new(body.to_string());
     Ok(response)
