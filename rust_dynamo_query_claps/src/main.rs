@@ -1,6 +1,8 @@
 use lambda::handler_fn;
 use rusoto_core::Region;
-use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, QueryInput};
+use rusoto_dynamodb::{
+    AttributeValue, DynamoDb, DynamoDbClient, QueryError, QueryInput, QueryOutput,
+};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -52,7 +54,7 @@ struct CustomEvent {
 #[derive(Serialize, Clone)]
 struct CustomOutput {
     #[serde(rename = "isBase64Encoded")]
-    is_base64_encoded: ::serde_json::Value,
+    is_base64_encoded: bool,
     #[serde(rename = "statusCode")]
     status_code: u16,
     body: ::serde_json::Value,
@@ -63,7 +65,7 @@ struct CustomOutput {
 impl CustomOutput {
     fn new(body: String) -> Self {
         CustomOutput {
-            is_base64_encoded: ::serde_json::Value::Bool(false),
+            is_base64_encoded: false,
             status_code: 200,
             body: ::serde_json::Value::String(body),
             headers: json!({
@@ -97,53 +99,60 @@ async fn func(e: CustomEvent) -> Result<CustomOutput, Error> {
     expression_attribute_values.insert(
         ":sk".to_string(),
         AttributeValue {
-            s: Some(format!("#TOTAL")),
+            s: Some(format!("#CLAP#")),
             ..Default::default()
         },
     );
+
+    // ip of the viewer
+    let ip: String = if let Some(rc) = e.request_context {
+        rc.identity.source_ip
+    } else {
+        "0.0.0.0".to_string()
+    };
 
     let query_input: QueryInput = QueryInput {
         table_name: String::from(TABLE_NAME),
         key_condition_expression: Some("PK = :pk AND begins_with(SK, :sk)".to_string()),
         exclusive_start_key: None,
         expression_attribute_values: Some(expression_attribute_values),
-        limit: Some(10),
         ..Default::default()
     };
 
-    let mut body: ::serde_json::Value = json!({});
-    match client.query(query_input).await {
-        Ok(output) => {
-            body = json!(output);
-        }
-        Err(error) => {
-            println!("Error: {:?}", error);
+    let body: ::serde_json::Value;
+    let dynamo_output: QueryOutput = client.query(query_input).await?;
+    let items = dynamo_output.items.unwrap();
+    let voter_count = dynamo_output.count.unwrap();
+
+    let mut total: i32 = 0;
+    let mut viewer_clap_count: i32 = 0;
+
+    for item in &items {
+        // accumulate total
+        let claps_attribute_value: &AttributeValue = item.get("claps").unwrap();
+        let claps_string: String = claps_attribute_value.n.clone().unwrap();
+        let claps: i32 = claps_string.parse::<i32>().unwrap();
+        total = total + claps;
+
+        // update viewer_clap_count
+        // - match IP
+        // SK = #CLAP#151.205.100.100
+        let sk_attribute_value: &AttributeValue = item.get("SK").unwrap();
+        let sk_string: String = sk_attribute_value.s.clone().unwrap();
+
+        let sk_ip = sk_string[6..].to_string();
+        if sk_ip == ip {
+            viewer_clap_count = claps
         }
     }
-
-    // https://stackoverflow.com/questions/59568278/why-does-the-operator-report-the-error-the-trait-bound-noneerror-error-is-no
-    // the trait bound `std::option::NoneError: std::error::Error` is not satisfied
-    // the trait `std::error::Error` is not implemented for `std::option::NoneError`
-    // note: required because of the requirements on the impl of `std::convert::From<std::option::NoneError>`
-    // for `std::boxed::Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>`
-
-    // let response: CustomOutput = CustomOutput {
-    //     is_base64_encoded: ::serde_json::Value::Bool(false),
-    //     status_code: 200,
-    //     // The body field, if you're returning JSON, must be converted to a string to prevent further problems with the response.
-    //     // You can use JSON.stringify to handle this in Node.js functions.
-    //     // Other runtimes require different solutions, but the concept is the same.
-    //     // https://aws.amazon.com/premiumsupport/knowledge-center/malformed-502-api-gateway/
-    //     // body: body,
-    //     // body: ::serde_json::Value::String(format!(
-    //     //     "Hello from Rust, my dear default user! No parameters"
-    //     // )),
-    //     body: ::serde_json::Value::String(body.to_string()),
-    // };
+    body = json!({
+        "slug": slug,
+        "total": total,
+        "viewerClapCount": viewer_clap_count,
+        "voterCount": voter_count,
+        // "ip": ip
+    });
 
     let response = CustomOutput::new(body.to_string());
     Ok(response)
 }
-
-// Test this in the lambda console with a plain STRING as the
-// `event` payload
